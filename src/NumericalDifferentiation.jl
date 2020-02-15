@@ -9,6 +9,8 @@ struct TotalVariation{T<:AbstractFloat} <: DifferentiationMethod
 end
 TotalVariation() = TotalVariation(1e-12)
 
+struct Tikhonov <: DifferentiationMethod end
+
 
 """
 	diffmatrix(x::AbstractVector)
@@ -201,5 +203,25 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
         println("max. number of iterations reached. result is shit.")
     end
     
+    return u
+end
+
+function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto, u0=[0;diff(f)])
+    if pbsize==:small || (pbsize==:auto && length(f)<1001)
+        D = diffmatrix(x)
+        A = intgmatrix(x)
+        r = A'*(f .- f[1])
+        δ = tr(D'D)/length(x)^3
+        H = α*δ*D'D + A'A
+        u = H\r        
+    elseif pbsize==:large || (pbsize==:auto && length(f)>=1001)
+        D = spdiffmatrix(x)
+        δ = tr(D'D)/length(x)^3
+        L = α*δ*D'D
+        r = integrationadjoint(x, f .- f[1])
+        H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + L*v, length(x))
+        u = cg(H, r)
+    end
+
     return u
 end
