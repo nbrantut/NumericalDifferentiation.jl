@@ -1,6 +1,9 @@
+module NumericalDifferentiation
+
+export differentiate, integrationoperator
+
 using LinearAlgebra, SparseArrays
-using NumericalIntegration: integrate, cumul_integrate
-using LinearMaps, IterativeSolvers#, Preconditioners
+using LinearMaps, IterativeSolvers
 
 abstract type DifferentiationMethod end
 
@@ -11,9 +14,10 @@ TotalVariation() = TotalVariation(1e-12)
 
 struct Tikhonov <: DifferentiationMethod end
 
-
 """
 	diffmatrix(x::AbstractVector)
+
+Generate differentiation matrix from node positions `x`.
 """
 function diffmatrix(x::AbstractVector)
     D = zeros(eltype(x), length(x)-1, length(x))
@@ -26,6 +30,8 @@ end
 
 """
 	spdiffmatrix(x::AbstractVector)
+
+Generate sparse differentiation matrix from node positions `x`.
 """
 function spdiffmatrix(x::AbstractVector)
     el = 1 ./diff(x)
@@ -38,6 +44,8 @@ end
 
 """
 	intgmatrix(x::AbstractVector)
+
+Generate integration matrix using Trapezoidal rule from node positions `x`.
 """
 function intgmatrix(x::AbstractVector)
     K = zeros(eltype(x), length(x), length(x))
@@ -53,6 +61,9 @@ end
 
 """
 	integrationoperator(x,y)
+
+Integration operator using trapezoidal rule. Return the integral
+$\int_0^x y(u)du$ for all `x`. This code is reproduced from NumericalIntegration.jl (copied to avoid unnecessary dependencies and compatibility issues).
 """
 function integrationoperator(x,y)
     retarr = zeros(eltype(x),size(x)) + zeros(eltype(y),size(y))
@@ -64,6 +75,8 @@ end
 
 """
 	integrationadjoint(x,y)
+
+Adjoint of integration operator. Constructed such that the corresponding matrix is truly the transpose of the matrix of the integration operator.
 """
 function integrationadjoint(x,y)
     z = zeros(eltype(x),size(x)) + zeros(eltype(y),size(y))
@@ -103,6 +116,8 @@ end
 
 """
 	diffoperator(du,Δx,D)
+
+Construct differentiation operator for TV method.
 """
 function diffoperator(du,Δx,D,epsilon)
     psi = Diagonal(Ψp.(du.^2,epsilon))
@@ -111,7 +126,23 @@ function diffoperator(du,Δx,D,epsilon)
 end
 
 """
-	derivative(x::AbstractVector, f::AbstractVector, ::TotalVariation, α::AbstractFloat, ::LaggedDiff)
+	differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, plt=false, u0=[0;diff(f)])
+
+Compute the derivative of vector `f` defined at positions `x`, using Total Variation regularisation with parameter `α`. The method is described in Chartrand, R. (2011), "Numerical Differentiation of Noisy, Nonsmooth Data", ISRN Appl. Math., doi:10.5402/2011/164564.
+
+# Arguments
+- `x::AbstractVector`: x coordinates where vector f is defined.
+- `f::AbstractVector`: input vector to take derivative of.
+- `tv::TotalVariation`: instance of TotalVariation type to specify method.
+- 'α': regularisation parameter.
+- 'tol': tolerance on magnitude of gradient to stop iterations.
+
+# Optional keyword arguments
+- `maxit=2000`: maximum number of iterations.
+- 'pbsize=:auto': if `:auto` (default), selects the matrix-based computation method only for problems with less than 1001 points. Enforce use of matrix-based method if set to `:small`, and enforce use of matrix-free method is set to `:large`.
+- 'plt=false': if true, use the `plot` function to display results at each iteration. Requires using extrnal plotting package (e.g., PyPlot).
+- 'u0=[0;diff(f)]': Can be used to set initial guess for derivative.
+
 """
 function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, plt=false, u0=[0;diff(f)])
 
@@ -176,9 +207,7 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
             L = diffoperator(du,Δx,D,tv.ϵ)
             # gradient
             g = integrationadjoint(x, integrationoperator(x,u)) - df + α*L*u
-            # preconditioner
-            #B = α*L + spdiagm(0=>integrationadjoint(x,integrationoperator(x,onevec)))
-            #R = CholeskyPreconditioner(B,2,1e-2)
+
             # approx. hessian
             H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + α*L*v, length(x))
             # QN step
@@ -206,7 +235,13 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
     return u
 end
 
-function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto, u0=[0;diff(f)])
+"""
+	differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto)
+
+Compute the derivative of vector `f` defined at positions `x`, using Tikhonov regularisation with parameter `α`. Optional keyword argument `pbsize` can be set to `:small` (uses matrix-based method), `:large` (uses matrix-free method), or `:auto` (default; chooses matrix-based method if `f` has less than 1001 points).
+
+"""
+function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto)
     if pbsize==:small || (pbsize==:auto && length(f)<1001)
         D = diffmatrix(x)
         A = intgmatrix(x)

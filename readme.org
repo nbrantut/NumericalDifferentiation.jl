@@ -1,0 +1,29 @@
+* NumericalDifferentiation.jl
+
+** About this package
+
+This module implements numerical differentiation of potentially noisy inputs using regularisation with either Tikhonov or Total Variation methods.
+
+It needs to be expanded in several ways:
+ - I could not get the preconditioning to do anything useful on large size systems for the TV method.
+ - One could implement other minimisation methods (at the moment only Lagged Diffusion method is implemented)
+ - Tikhonov method is implemented in a very rudimentary way and one should allow for automatic selection of regularisation parameter.
+
+The Total Variation regularisation code is an implementation of the algorithm by Chartrand (R. Chartrand (2011), "Numerical Differentiation of Noisy, Nonsmooth Data", ISRN Appl. Math., doi:10.5402/2011/164564; see also C.R. Vogel (2002), "Computational methods for inverse problems", SIAM, Algorithm 8.2.3) but is not a direct translation of Chartrand's Matlab code, and uses different operators (trapezoidal rule instead of Riemann).
+
+Rick Chartrand's Matlab code can be found here: https://sites.google.com/site/dnartrahckcir/home/tvdiff-code
+
+and a Python version by Simone Sturniolo is here: https://github.com/stur86/tvregdiff.
+
+The Tikhonov regularisation code is a direct implementation following steps outlined by J. J. Stickel (2010), "Data smoothing and numerical differentiation by a regularization method", Computers Chem. Eng., 34, 467-475. The original method (as far as I could trace) was explained by J. Cullum (1971), "Numerical differentiation and regularization", SIAM Journal on Numerical Analysis, 8, 254-265.
+
+** Usage
+
+#+BEGIN_SRC julia
+using NumericalDifferentiation
+
+x = range(-1, stop=1, length=101)
+y = abs.(x) + (rand(length(x)) .- .5)/5
+
+u = differentiate(x, y, TotalVariation(), 0.2, 1e-3, maxit=200)
+#+END_SRC
