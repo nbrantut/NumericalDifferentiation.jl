@@ -1,6 +1,6 @@
 module NumericalDifferentiation
 
-export differentiate, integrationoperator
+export differentiate, integrationoperator, TotalVariation, Tikhonov
 
 using LinearAlgebra, SparseArrays
 using LinearMaps, IterativeSolvers
@@ -62,8 +62,7 @@ end
 """
 	integrationoperator(x,y)
 
-Integration operator using trapezoidal rule. Return the integral
-$\int_0^x y(u)du$ for all `x`. This code is reproduced from NumericalIntegration.jl (copied to avoid unnecessary dependencies and compatibility issues).
+Integration operator using trapezoidal rule. Return the integral ``\\int_0^x y(u)du`` for all `x`. This code is reproduced from NumericalIntegration.jl (copied to avoid unnecessary dependencies and compatibility issues).
 """
 function integrationoperator(x,y)
     retarr = zeros(eltype(x),size(x)) + zeros(eltype(y),size(y))
@@ -259,4 +258,6 @@ function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbs
     end
 
     return u
+end
+
 end
