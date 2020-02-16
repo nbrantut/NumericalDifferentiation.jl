@@ -211,7 +211,7 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
             # approx. hessian
             H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + α*L*v, length(x))
             # QN step
-            s = cg(H, -g)#, Pl=R)
+            s = cg(H, -g)
 
             u += s
 
