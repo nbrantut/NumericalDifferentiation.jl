@@ -125,7 +125,7 @@ function diffoperator(du,Δx,D,epsilon)
 end
 
 """
-	differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, plt=false, u0=[0;diff(f)])
+	differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, verbose=false, precond=false, u0=[0;diff(f)])
 
 Compute the derivative of vector `f` defined at positions `x`, using Total Variation regularisation with parameter `α`. The method is described in Chartrand, R. (2011), "Numerical Differentiation of Noisy, Nonsmooth Data", ISRN Appl. Math., doi:10.5402/2011/164564.
 
@@ -139,23 +139,18 @@ Compute the derivative of vector `f` defined at positions `x`, using Total Varia
 # Optional keyword arguments
 - `maxit=2000`: maximum number of iterations.
 - 'pbsize=:auto': if `:auto` (default), selects the matrix-based computation method only for problems with less than 1001 points. Enforce use of matrix-based method if set to `:small`, and enforce use of matrix-free method is set to `:large`.
-- 'plt=false': if true, use the `plot` function to display results at each iteration. Requires using extrnal plotting package (e.g., PyPlot).
+- verbose=false. if true, shows convergence info.
+- precond=false. if true, use simple preconditioner. Not used for small systems.
 - 'u0=[0;diff(f)]': Can be used to set initial guess for derivative.
 
 """
-function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, plt=false, u0=[0;diff(f)])
+function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation, α, tol; maxit=2000, pbsize=:auto, verbose=false, precond=false, u0=[0;diff(f)])
 
     (length(x) == length(f)) || throw(DimensionMismatch("Inputs `x` and `f` should have same dimension"))
 
     c = 0
     u = u0
     Δx = diff(x)
-
-    if plt
-        figure()
-        plot(x, u)
-        draw()
-    end
 
     if pbsize==:small || (pbsize==:auto && length(f)<1001)
         D = diffmatrix(x)
@@ -179,15 +174,9 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
 
             u += s
 
-            keep = (norm(g)>tol)
+            keep = (norm(s)/norm(u)>tol)
             
-            print("iteration $c | grad $(norm(g))\r")
-
-            if plt
-                cla()
-                plot(x,u)
-                draw()
-            end
+            !verbose || print("iteration $c | change $(norm(s)/norm(u)) | grad $(norm(g))\r")
 
         end
     elseif pbsize==:large || (pbsize==:auto && length(f)>=1001)
@@ -209,27 +198,25 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
 
             # approx. hessian
             H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + α*L*v, length(x))
+            if precond
+                P = Diagonal(α*diag(L) .+1)
+            else
+                P = I
+            end
             # QN step
-            s = cg(H, -g)
+            s = cg(H, -g, Pl=P)
 
             u += s
 
-            keep = (norm(g)>tol)
+            keep = (norm(s)/norm(u)>tol)
 
-            print("iteration $c | grad $(norm(g))\r")
+            !verbose || print("iteration $c | change $(norm(s)/norm(u)) | grad $(norm(g))\r")
 
-            if plt
-                cla()
-                plot(x,u)
-                draw()
-            end
         end
 
     end
-    
-    if c==maxit
-        println("max. number of iterations reached. result is shit.")
-    end
+
+    !verbose || println("\nMax. iterations $c")
     
     return u
 end
