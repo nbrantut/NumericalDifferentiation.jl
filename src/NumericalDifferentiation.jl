@@ -233,12 +233,12 @@ function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbs
         A = intgmatrix(x)
         r = A'*(f .- f[1])
         δ = tr(D'D)/length(x)^3
-        H = α*δ*D'D + A'A
+        H = (α/δ)*D'D + A'A
         u = H\r        
     elseif pbsize==:large || (pbsize==:auto && length(f)>=1001)
         D = spdiffmatrix(x)
         δ = tr(D'D)/length(x)^3
-        L = α*δ*D'D
+        L = (α/δ)*D'D
         r = integrationadjoint(x, f .- f[1])
         H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + L*v, length(x))
         u = cg(H, r)
