@@ -218,7 +218,9 @@ function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbs
         L = (α/δ)*D'D
         r = integrationadjoint(x, f .- f[1])
         H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + L*v, length(x))
-        u = cg(H, r)
+        u, ch = minres(H, r; log=true)
+
+        !ch.converged || @warn "CG did not converge after $(ch.iters) iterations. Result might be inaccurate."
     end
 
     return u
