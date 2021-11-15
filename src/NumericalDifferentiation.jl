@@ -49,12 +49,9 @@ Generate integration matrix using Trapezoidal rule from node positions `x`.
 """
 function intgmatrix(x::AbstractVector)
     K = zeros(eltype(x), length(x), length(x))
-    for  j in 2:size(K,2), i in 1:size(K,1)
-        if i>=j
-            K[i,j-1] += .5*(x[j] - x[j-1])
-            K[i,j]   += .5*(x[j] - x[j-1])
-        end
-        
+    for  j in 2:size(K,2), i in j:size(K,1)
+        K[i,j-1] += .5*(x[j] - x[j-1])
+        K[i,j]   += .5*(x[j] - x[j-1])       
     end
     return K
 end
@@ -96,30 +93,12 @@ function integrationadjoint(x,y)
 end
 
 """
-	Ψ(t, ϵ)
-
-Regularised absolute value.
-"""
-function Ψ(t, ϵ)
-    return 2*sqrt(t + ϵ^2)
-end
-
-"""
-	Ψp(t, ϵ)
-
-Derivative of regularised absolute value.
-"""
-function Ψp(t,ϵ)
-    return 1/sqrt(t + ϵ^2)
-end
-
-"""
 	diffoperator(du,Δx,D)
 
 Construct differentiation operator for TV method.
 """
 function diffoperator(du,Δx,D,epsilon)
-    psi = Diagonal(Ψp.(du.^2,epsilon))
+    psi = Diagonal(1 ./sqrt.(du.^2 .+ epsilon))
     δx  = Diagonal(Δx)
     return (D')*(δx*psi)*D
 end
