@@ -163,8 +163,6 @@ function differentiate(x::AbstractVector, f::AbstractVector, tv::TotalVariation,
         df = integrationadjoint(x, f .- f[1])
 
         keep = true
-
-        onevec = ones(length(x))
         
         while keep && c<maxit
             c += 1
