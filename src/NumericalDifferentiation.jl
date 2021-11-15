@@ -220,7 +220,7 @@ function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbs
         H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + L*v, length(x))
         u, ch = minres(H, r; log=true)
 
-        !ch.isconverged || @warn "Solver did not converge after $(ch.iters) iterations. Result might be inaccurate."
+        ch.isconverged || @warn "Solver did not converge after $(ch.iters) iterations. Result might be inaccurate."
     end
 
     return u
