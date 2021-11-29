@@ -204,7 +204,7 @@ end
 Compute the derivative of vector `f` defined at positions `x`, using Tikhonov regularisation with parameter `α`. Optional keyword argument `pbsize` can be set to `:small` (uses matrix-based method), `:large` (uses matrix-free method), or `:auto` (default; chooses matrix-based method if `f` has less than 1001 points).
 
 """
-function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto)
+function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbsize=:auto, maxit=length(x))
     if pbsize==:small || (pbsize==:auto && length(f)<1001)
         D = diffmatrix(x)
         A = intgmatrix(x)
@@ -218,7 +218,7 @@ function differentiate(x::AbstractVector, f::AbstractVector, ::Tikhonov, α; pbs
         L = (α/δ)*D'D
         r = integrationadjoint(x, f .- f[1])
         H = LinearMap(v -> integrationadjoint(x, integrationoperator(x,v)) + L*v, length(x))
-        u, ch = minres(H, r; log=true)
+        u, ch = cg(H, r; log=true, maxiter=maxit)
 
         ch.isconverged || @warn "Solver did not converge after $(ch.iters) iterations. Result might be inaccurate."
     end
